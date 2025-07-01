@@ -11,14 +11,70 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-st.title('Air Quality Prediction System')
+# Add a weather-themed background and header
+st.markdown(
+    """
+    <style>
+    body {
+        background: linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%);
+        background-attachment: fixed;
+    }
+    .stApp {
+        background: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1500&q=80') no-repeat center center fixed;
+        background-size: cover;
+    }
+    .weather-header {
+        color: #fff;
+        text-shadow: 2px 2px 8px #00000099;
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 0.5em;
+        text-align: center;
+    }
+    .weather-sub {
+        color: #fff;
+        text-shadow: 1px 1px 6px #00000099;
+        font-size: 1.2rem;
+        margin-bottom: 2em;
+        text-align: center;
+    }
+    </style>
+    <div class="weather-header">🌦️ Air Quality Prediction System</div>
+    <div class="weather-sub">Upload your air quality dataset and get instant analysis, predictions, and visualizations.<br>Enjoy the weather effect while you explore your data!</div>
+    """,
+    unsafe_allow_html=True
+)
+
+# Add a weather animation (animated SVG cloud/rain)
+st.markdown(
+    """
+    <div style="display: flex; justify-content: center; margin-bottom: 2em;">
+    <svg width="120" height="80" viewBox="0 0 120 80">
+      <g>
+        <ellipse cx="60" cy="50" rx="40" ry="20" fill="#fff" opacity="0.7"/>
+        <ellipse cx="80" cy="55" rx="20" ry="12" fill="#fff" opacity="0.6"/>
+        <ellipse cx="40" cy="55" rx="20" ry="12" fill="#fff" opacity="0.6"/>
+        <line x1="50" y1="70" x2="50" y2="80" stroke="#4fc3f7" stroke-width="4">
+          <animate attributeName="y1" values="70;80;70" dur="1s" repeatCount="indefinite"/>
+          <animate attributeName="y2" values="80;90;80" dur="1s" repeatCount="indefinite"/>
+        </line>
+        <line x1="70" y1="70" x2="70" y2="80" stroke="#4fc3f7" stroke-width="4">
+          <animate attributeName="y1" values="70;80;70" dur="1.2s" repeatCount="indefinite"/>
+          <animate attributeName="y2" values="80;90;80" dur="1.2s" repeatCount="indefinite"/>
+        </line>
+      </g>
+    </svg>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 uploaded_file = st.file_uploader('Upload your Air Quality CSV file', type=['csv'])
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file, delimiter=';')
     st.subheader('Data Preview')
-    st.write(df.head())
+    st.dataframe(df.head(), use_container_width=True)
 
     # Drop unnamed columns
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
@@ -31,14 +87,24 @@ if uploaded_file:
     X = X.fillna(X.median(numeric_only=True))
     X = X.select_dtypes(include=['number'])
 
+    # Interactive feature selection
+    st.subheader('Feature Selection')
+    selected_features = st.multiselect('Select features to use for prediction', options=X.columns, default=list(X.columns))
+    X = X[selected_features]
+
     # Train/test split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    # Model training
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    # Model selection
+    st.subheader('Model Selection')
+    model_type = st.radio('Choose a model', ['Random Forest', 'Decision Tree'])
+    if model_type == 'Random Forest':
+        model = RandomForestClassifier(n_estimators=100, random_state=42)
+    else:
+        model = DecisionTreeClassifier(random_state=42)
     model.fit(X_train_scaled, y_train)
     y_pred = model.predict(X_test_scaled)
 
@@ -78,7 +144,7 @@ if uploaded_file:
     # EDA: Histogram
     st.subheader('EDA: Histogram of Target')
     fig_hist, ax_hist = plt.subplots()
-    ax_hist.hist(y, bins=20)
+    ax_hist.hist(y, bins=20, color='#4fc3f7', edgecolor='black')
     ax_hist.set_title(f'{target_col} Distribution')
     ax_hist.set_xlabel(target_col)
     ax_hist.set_ylabel('Frequency')
@@ -88,7 +154,7 @@ if uploaded_file:
     st.subheader('EDA: Boxplot for Outlier Detection')
     y_numeric = pd.to_numeric(y, errors='coerce')
     fig_box, ax_box = plt.subplots()
-    sns.boxplot(x=y_numeric, ax=ax_box)
+    sns.boxplot(x=y_numeric, ax=ax_box, color='#81d4fa')
     ax_box.set_title(f'Boxplot for {target_col}')
     st.pyplot(fig_box)
 
@@ -115,3 +181,8 @@ if uploaded_file:
         pred_result = model.predict(pred_X_scaled)
         st.write('Predictions:')
         st.write(pred_result)
+
+# Remove the auto-launch code to prevent infinite browser tabs
+# if __name__ == "__main__":
+#     import os
+#     os.system('python -m streamlit run air_quality_app.py')
